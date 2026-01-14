@@ -74,4 +74,80 @@ class HarfBuzzTest {
             assertTrue(shaper.upem in 16..65535, "UPEM should be in valid range")
         }
     }
+
+    @Test
+    fun `virtual shaper with codepoints`() {
+        // Test VirtualHarfBuzzShaper with hb_buffer_add (which requires content type fix)
+        val upem = 1000
+        val glyphOrder = listOf(".notdef", "A", "B", "C")
+        val unicodeToGid = mapOf(
+            'A'.code to 1,
+            'B'.code to 2,
+            'C'.code to 3,
+        )
+        val hAdvances = intArrayOf(0, 500, 600, 550) // widths for .notdef, A, B, C
+
+        val shaper = VirtualHarfBuzzShaper(
+            upem = upem,
+            glyphOrder = glyphOrder,
+            unicodeToGid = unicodeToGid,
+            hAdvances = hAdvances,
+            tableOverrides = null,
+        )
+
+        shaper.use {
+            // Shape "ABC" using codepoints
+            val codepoints = intArrayOf('A'.code, 'B'.code, 'C'.code)
+            val clusters = intArrayOf(0, 1, 2)
+
+            val result = it.shapeCodepoints(codepoints, clusters)
+
+            assertEquals(3, result.size, "Should have 3 shaped glyphs")
+
+            // Check glyph IDs match the unicodeToGid mapping
+            assertEquals(1, result[0].codepoint, "First glyph should be GID 1 (A)")
+            assertEquals(2, result[1].codepoint, "Second glyph should be GID 2 (B)")
+            assertEquals(3, result[2].codepoint, "Third glyph should be GID 3 (C)")
+
+            // Check clusters are preserved
+            assertEquals(0, result[0].cluster)
+            assertEquals(1, result[1].cluster)
+            assertEquals(2, result[2].cluster)
+
+            // Check advances match hAdvances
+            assertEquals(500, result[0].xAdvance, "A should have advance 500")
+            assertEquals(600, result[1].xAdvance, "B should have advance 600")
+            assertEquals(550, result[2].xAdvance, "C should have advance 550")
+        }
+    }
+
+    @Test
+    fun `virtual shaper with unencoded glyphs`() {
+        // Test that unencoded glyphs (via CH_GID_PREFIX) work correctly
+        val upem = 1000
+        val glyphOrder = listOf(".notdef", "A", "B", "ligature_AB")
+        val unicodeToGid = mapOf('A'.code to 1, 'B'.code to 2)
+        val hAdvances = intArrayOf(0, 500, 600, 900)
+
+        val shaper = VirtualHarfBuzzShaper(
+            upem = upem,
+            glyphOrder = glyphOrder,
+            unicodeToGid = unicodeToGid,
+            hAdvances = hAdvances,
+            tableOverrides = null,
+        )
+
+        shaper.use {
+            // Address the unencoded "ligature_AB" glyph (GID 3) via prefix
+            val gid3Codepoint = (VirtualHarfBuzzShaper.CH_GID_PREFIX + 3u).toInt()
+            val codepoints = intArrayOf(gid3Codepoint)
+            val clusters = intArrayOf(0)
+
+            val result = it.shapeCodepoints(codepoints, clusters)
+
+            assertEquals(1, result.size)
+            assertEquals(3, result[0].codepoint, "Should resolve to GID 3")
+            assertEquals(900, result[0].xAdvance, "ligature_AB should have advance 900")
+        }
+    }
 }

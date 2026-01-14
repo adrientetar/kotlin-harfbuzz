@@ -25,6 +25,10 @@ object HarfBuzz {
         destroy: Pointer?,
     ): Pointer?
 
+    @JvmStatic external fun hb_blob_reference(blob: Pointer?): Pointer?
+
+    @JvmStatic external fun hb_blob_get_empty(): Pointer?
+
     @JvmStatic external fun hb_blob_destroy(blob: Pointer?)
     
     @JvmStatic external fun hb_blob_get_length(blob: Pointer?): Int
@@ -112,6 +116,8 @@ object HarfBuzz {
         codepoint: Int,
         cluster: Int,
     )
+
+    @JvmStatic external fun hb_buffer_set_content_type(buffer: Pointer?, content_type: Int)
 
     @JvmStatic external fun hb_buffer_set_direction(buffer: Pointer?, direction: Int)
     

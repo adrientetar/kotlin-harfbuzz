@@ -17,6 +17,13 @@ object HbDirection {
     const val BTT = 7
 }
 
+/** Buffer content types */
+object HbBufferContentType {
+    const val INVALID = 0
+    const val UNICODE = 1
+    const val GLYPHS = 2
+}
+
 /** Common OpenType table tags */
 object HbTag {
     val GSUB = hbTag('G', 'S', 'U', 'B')

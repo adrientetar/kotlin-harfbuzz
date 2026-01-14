@@ -2,6 +2,9 @@ package io.github.adrientetar.harfbuzz
 
 import com.sun.jna.Memory
 import com.sun.jna.Pointer
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 /**
  * HarfBuzz shaper backed only by OpenType layout tables (GSUB/GPOS/GDEF)
@@ -47,6 +50,10 @@ class VirtualHarfBuzzShaper(
     private val upemValue: Int = upem
     private val glyphOrderValue: List<String> = glyphOrder
 
+    // Thread-safety: prevent use-after-free when close() is called during shaping
+    private val closed = AtomicBoolean(false)
+    private val shapingLock = ReentrantLock()
+
     init {
         // Prepare override blobs
         if (tableOverrides != null) {
@@ -58,7 +65,18 @@ class VirtualHarfBuzzShaper(
         // Table callback for hb_face_create_for_tables
         tableCallback = object : HbReferenceTableFunc {
             override fun invoke(face: Pointer?, tag: Int, userData: Pointer?): Pointer? {
-                return overrideBlobs[tag]
+                if (closed.get()) return HarfBuzz.hb_blob_get_empty()
+
+                val blob = overrideBlobs[tag]
+                // hb_face_create_for_tables expects the callback to return a hb_blob_t* that the
+                // caller owns (and will hb_blob_destroy when done). If we return the same blob
+                // pointer without incrementing its refcount, HarfBuzz can destroy it multiple
+                // times across table lookups, leading to heap corruption / SIGSEGV.
+                return if (blob != null) {
+                    HarfBuzz.hb_blob_reference(blob)
+                } else {
+                    HarfBuzz.hb_blob_reference(HarfBuzz.hb_blob_get_empty())
+                }
             }
         }
 
@@ -89,6 +107,9 @@ class VirtualHarfBuzzShaper(
                 glyph: Pointer?,
                 userData: Pointer?,
             ): Int {
+                // Guard against use-after-free: return 0 if shaper is closed
+                if (closed.get()) return 0
+
                 val u = unicode.toUInt()
 
                 // Explicit glyph-id encoding (unencoded glyphs)
@@ -112,6 +133,8 @@ class VirtualHarfBuzzShaper(
 
         hAdvanceFunc = object : HbGlyphHAdvanceFunc {
             override fun invoke(font: Pointer?, fontData: Pointer?, glyph: Int, userData: Pointer?): Int {
+                // Guard against use-after-free: return 0 if shaper is closed
+                if (closed.get()) return 0
                 return hAdvances.getOrElse(glyph) { 0 }
             }
         }
@@ -125,6 +148,9 @@ class VirtualHarfBuzzShaper(
                 size: Int,
                 userData: Pointer?,
             ): Int {
+                // Guard against use-after-free: return 0 if shaper is closed
+                if (closed.get()) return 0
+
                 val glyphName = glyphOrderValue.getOrNull(glyph) ?: return 0
                 if (name == null || size <= 0) return 0
 
@@ -172,6 +198,7 @@ class VirtualHarfBuzzShaper(
      * @param clusters Array of cluster values (must be same length as codepoints)
      * @param direction Optional text direction (null = auto-detect)
      * @param features Optional list of features to enable/disable during shaping
+     * @throws IllegalStateException if the shaper has been closed
      */
     fun shapeCodepoints(
         codepoints: IntArray,
@@ -182,64 +209,85 @@ class VirtualHarfBuzzShaper(
         if (codepoints.isEmpty()) return emptyList()
         require(codepoints.size == clusters.size) { "codepoints and clusters must be same length" }
 
-        val buffer = HarfBuzz.hb_buffer_create()
-            ?: error("Failed to create HarfBuzz buffer")
-
-        try {
-            for (i in codepoints.indices) {
-                HarfBuzz.hb_buffer_add(buffer, codepoints[i], clusters[i])
+        // Use lock to prevent close() from destroying resources while shaping is in progress
+        return shapingLock.withLock {
+            if (closed.get()) {
+                throw IllegalStateException("VirtualHarfBuzzShaper has been closed")
             }
 
-            if (direction != null) {
-                HarfBuzz.hb_buffer_set_direction(buffer, direction.hbValue)
-            } else {
-                HarfBuzz.hb_buffer_guess_segment_properties(buffer)
+            val buffer = HarfBuzz.hb_buffer_create()
+                ?: error("Failed to create HarfBuzz buffer")
+
+            try {
+                for (i in codepoints.indices) {
+                    HarfBuzz.hb_buffer_add(buffer, codepoints[i], clusters[i])
+                }
+
+                // hb_buffer_add does NOT set content type (unlike hb_buffer_add_utf*),
+                // so we must set it manually before calling hb_buffer_guess_segment_properties
+                // or hb_shape, both of which assert HB_BUFFER_CONTENT_TYPE_UNICODE.
+                HarfBuzz.hb_buffer_set_content_type(buffer, HbBufferContentType.UNICODE)
+
+                if (direction != null) {
+                    HarfBuzz.hb_buffer_set_direction(buffer, direction.hbValue)
+                } else {
+                    HarfBuzz.hb_buffer_guess_segment_properties(buffer)
+                }
+
+                // Allocate features array if provided
+                val (featuresPtr, numFeatures) = if (features != null && features.isNotEmpty()) {
+                    val (mem, _) = HbFeature.allocateArray(features)
+                    Pair(mem, features.size)
+                } else {
+                    Pair(null, 0)
+                }
+
+                HarfBuzz.hb_shape(font, buffer, featuresPtr, numFeatures)
+
+                val count = HarfBuzz.hb_buffer_get_length(buffer)
+                if (count == 0) return@withLock emptyList()
+
+                val infosPtr = HarfBuzz.hb_buffer_get_glyph_infos(buffer, null)
+                    ?: return@withLock emptyList()
+                val positionsPtr = HarfBuzz.hb_buffer_get_glyph_positions(buffer, null)
+                    ?: return@withLock emptyList()
+
+                val infoSize = HbGlyphInfo().size()
+                val posSize = HbGlyphPosition().size()
+
+                (0 until count).map { i ->
+                    val info = HbGlyphInfo(infosPtr.share((i * infoSize).toLong()))
+                    val pos = HbGlyphPosition(positionsPtr.share((i * posSize).toLong()))
+
+                    ShapedGlyph(
+                        codepoint = info.codepoint,
+                        cluster = info.cluster,
+                        xAdvance = pos.x_advance,
+                        yAdvance = pos.y_advance,
+                        xOffset = pos.x_offset,
+                        yOffset = pos.y_offset,
+                    )
+                }
+            } finally {
+                HarfBuzz.hb_buffer_destroy(buffer)
             }
-
-            // Allocate features array if provided
-            val (featuresPtr, numFeatures) = if (features != null && features.isNotEmpty()) {
-                val (mem, _) = HbFeature.allocateArray(features)
-                Pair(mem, features.size)
-            } else {
-                Pair(null, 0)
-            }
-
-            HarfBuzz.hb_shape(font, buffer, featuresPtr, numFeatures)
-
-            val count = HarfBuzz.hb_buffer_get_length(buffer)
-            if (count == 0) return emptyList()
-
-            val infosPtr = HarfBuzz.hb_buffer_get_glyph_infos(buffer, null) ?: return emptyList()
-            val positionsPtr = HarfBuzz.hb_buffer_get_glyph_positions(buffer, null) ?: return emptyList()
-
-            val infoSize = HbGlyphInfo().size()
-            val posSize = HbGlyphPosition().size()
-
-            return (0 until count).map { i ->
-                val info = HbGlyphInfo(infosPtr.share((i * infoSize).toLong()))
-                val pos = HbGlyphPosition(positionsPtr.share((i * posSize).toLong()))
-
-                ShapedGlyph(
-                    codepoint = info.codepoint,
-                    cluster = info.cluster,
-                    xAdvance = pos.x_advance,
-                    yAdvance = pos.y_advance,
-                    xOffset = pos.x_offset,
-                    yOffset = pos.y_offset,
-                )
-            }
-        } finally {
-            HarfBuzz.hb_buffer_destroy(buffer)
         }
     }
 
     override fun close() {
-        HarfBuzz.hb_font_destroy(font)
-        HarfBuzz.hb_face_destroy(face)
-        for (blob in overrideBlobs.values) {
-            HarfBuzz.hb_blob_destroy(blob)
+        // Acquire lock to ensure no shaping operation is in progress
+        shapingLock.withLock {
+            if (closed.getAndSet(true)) {
+                return // Already closed
+            }
+
+            HarfBuzz.hb_font_destroy(font)
+            HarfBuzz.hb_face_destroy(face)
+            for (blob in overrideBlobs.values) {
+                HarfBuzz.hb_blob_destroy(blob)
+            }
+            fontFuncs?.let { HarfBuzz.hb_font_funcs_destroy(it) }
+            // Memory instances are freed when GC'd
         }
-        fontFuncs?.let { HarfBuzz.hb_font_funcs_destroy(it) }
-        // Memory instances are freed when GC'd
     }
 }
