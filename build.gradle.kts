@@ -79,7 +79,16 @@ tasks.register<Exec>("buildHarfBuzz") {
     val sourceDir = harfbuzzDir.asFile
     
     inputs.dir(sourceDir)
-    outputs.dir(buildDir)
+    // Check for actual library output, not just directory existence
+    outputs.files(fileTree(buildDir.resolve("src")) {
+        include("*.dll", "*.dylib", "*.so", "*.so.*")
+    })
+    outputs.upToDateWhen { 
+        // Only up-to-date if a library file actually exists
+        buildDir.resolve("src").listFiles()?.any { 
+            it.name.contains("harfbuzz") && (it.extension in listOf("dll", "dylib", "so") || it.name.contains(".so."))
+        } == true
+    }
     
     doFirst {
         if (!sourceDir.exists()) {
