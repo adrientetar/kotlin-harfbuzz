@@ -72,24 +72,14 @@ val harfbuzzDir = layout.projectDirectory.dir("harfbuzz")
 val harfbuzzBuildDir = layout.buildDirectory.dir("harfbuzz-build")
 
 // Build HarfBuzz using meson
-tasks.register<Exec>("buildHarfBuzz") {
-    description = "Build HarfBuzz native library using meson"
-    
+val mesonSetup by tasks.registering(Exec::class) {
+    description = "Configure HarfBuzz build using meson"
     val buildDir = harfbuzzBuildDir.get().asFile
     val sourceDir = harfbuzzDir.asFile
-    
+
     inputs.dir(sourceDir)
-    // Check for actual library output, not just directory existence
-    outputs.files(fileTree(buildDir.resolve("src")) {
-        include("*.dll", "*.dylib", "*.so", "*.so.*")
-    })
-    outputs.upToDateWhen { 
-        // Only up-to-date if a library file actually exists
-        buildDir.resolve("src").listFiles()?.any { 
-            it.name.contains("harfbuzz") && (it.extension in listOf("dll", "dylib", "so") || it.name.contains(".so."))
-        } == true
-    }
-    
+    outputs.file(buildDir.resolve("build.ninja"))
+
     doFirst {
         if (!sourceDir.exists()) {
             throw GradleException(
@@ -97,29 +87,28 @@ tasks.register<Exec>("buildHarfBuzz") {
             )
         }
     }
-    
+
     workingDir = projectDir
-    
-    // Use a script to handle meson setup + compile
+    onlyIf { !buildDir.resolve("build.ninja").exists() }
+
     if (currentOs.get() == "windows") {
-        commandLine("cmd", "/c", """
-            if not exist "${buildDir.absolutePath}\build.ninja" (
-                if exist "${buildDir.absolutePath}" rmdir /s /q "${buildDir.absolutePath}"
-                meson setup "${buildDir.absolutePath}" "${sourceDir.absolutePath}" ^
-                    -Dglib=disabled ^
-                    -Dgobject=disabled ^
-                    -Dcairo=disabled ^
-                    -Dfreetype=disabled ^
-                    -Dicu=disabled ^
-                    --default-library=shared
-            )
-            meson compile -C "${buildDir.absolutePath}" -v
-            echo === Built library files ===
-            dir "${buildDir.absolutePath}\src\*.dll" 2>nul || echo No DLL files found
-        """.trimIndent())
+        commandLine(
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            """
+                ${'$'}ErrorActionPreference = 'Stop'
+                ${'$'}buildDir = '${buildDir.absolutePath}'
+                ${'$'}sourceDir = '${sourceDir.absolutePath}'
+                if (Test-Path "${'$'}buildDir") { Remove-Item -Recurse -Force "${'$'}buildDir" }
+                meson setup "${'$'}buildDir" "${'$'}sourceDir" -Dglib=disabled -Dgobject=disabled -Dcairo=disabled -Dfreetype=disabled -Dicu=disabled --default-library=shared
+            """.trimIndent(),
+        )
     } else {
-        commandLine("bash", "-c", """
-            if [ ! -f "${buildDir.absolutePath}/build.ninja" ]; then
+        commandLine(
+            "bash",
+            "-c",
+            """
                 rm -rf "${buildDir.absolutePath}"
                 meson setup "${buildDir.absolutePath}" "${sourceDir.absolutePath}" \
                     -Dglib=disabled \
@@ -128,12 +117,54 @@ tasks.register<Exec>("buildHarfBuzz") {
                     -Dfreetype=disabled \
                     -Dicu=disabled \
                     --default-library=shared
-            fi
-            meson compile -C "${buildDir.absolutePath}" -v
-            echo "=== Built library files ==="
-            ls -la "${buildDir.absolutePath}/src/"*harfbuzz* 2>/dev/null || echo "No harfbuzz files found"
-        """.trimIndent())
+            """.trimIndent(),
+        )
     }
+}
+
+val mesonCompile by tasks.registering(Exec::class) {
+    description = "Compile HarfBuzz using meson"
+    val buildDir = harfbuzzBuildDir.get().asFile
+    val sourceDir = harfbuzzDir.asFile
+
+    dependsOn(mesonSetup)
+    inputs.dir(sourceDir)
+    outputs.files(fileTree(buildDir.resolve("src")) {
+        include("*.dll", "*.dylib", "*.so", "*.so.*")
+    })
+
+    workingDir = projectDir
+
+    if (currentOs.get() == "windows") {
+        commandLine(
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            """
+                ${'$'}ErrorActionPreference = 'Stop'
+                ${'$'}buildDir = '${buildDir.absolutePath}'
+                meson compile -C "${'$'}buildDir" -v
+                Write-Host "=== Built library files ==="
+                ${'$'}dlls = Get-ChildItem -Path "${'$'}buildDir\\src\\*harfbuzz*.dll" -ErrorAction SilentlyContinue
+                if (${'$'}dlls) { ${'$'}dlls } else { Write-Host "No DLL files found" }
+            """.trimIndent(),
+        )
+    } else {
+        commandLine(
+            "bash",
+            "-c",
+            """
+                meson compile -C "${buildDir.absolutePath}" -v
+                echo "=== Built library files ==="
+                ls -la "${buildDir.absolutePath}/src/"*harfbuzz* 2>/dev/null || echo "No harfbuzz files found"
+            """.trimIndent(),
+        )
+    }
+}
+
+tasks.register("buildHarfBuzz") {
+    description = "Build HarfBuzz native library using meson"
+    dependsOn(mesonSetup, mesonCompile)
 }
 
 tasks.register<Copy>("copyNativeLibrary") {
