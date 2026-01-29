@@ -13,7 +13,7 @@ jobs:
         include:
           - os: macos-latest      # Apple Silicon
             lib-name: libharfbuzz.dylib
-          - os: macos-13          # Intel
+          - os: macos-15-intel    # Intel
             lib-name: libharfbuzz.dylib
           - os: ubuntu-latest
             lib-name: libharfbuzz.so

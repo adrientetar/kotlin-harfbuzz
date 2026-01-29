@@ -13,7 +13,7 @@ jobs:
           - os: macos-latest       # Apple Silicon runner
             classifier: macos-arm64
             lib-name: libharfbuzz.dylib
-          - os: macos-13           # Intel runner
+          - os: macos-15-intel     # Intel runner
             classifier: macos-x64
             lib-name: libharfbuzz.dylib
           - os: ubuntu-latest
