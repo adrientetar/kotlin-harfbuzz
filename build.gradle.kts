@@ -144,7 +144,7 @@ tasks.register<Copy>("copyNativeLibrary") {
         // Only include the actual library file (not symlinks or subset library)
         include("libharfbuzz.0.dylib")   // macOS versioned
         include("libharfbuzz.so.0")      // Linux versioned (actual file)
-        include("harfbuzz-0.dll")        // Windows versioned
+        include("libharfbuzz-0.dll")     // Windows versioned
     }
     into(nativeLibDir)
     
