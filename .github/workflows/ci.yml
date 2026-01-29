@@ -53,11 +53,6 @@ jobs:
       - name: Build and test
         run: ./gradlew build test
 
-      - name: Debug - List built libraries
-        if: always()
-        run: ls -la build/harfbuzz-build/src/ || dir build\harfbuzz-build\src\
-        shell: bash
-
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: failure()

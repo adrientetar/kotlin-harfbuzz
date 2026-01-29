@@ -104,7 +104,9 @@ tasks.register<Exec>("buildHarfBuzz") {
                     -Dicu=disabled ^
                     --default-library=shared
             )
-            meson compile -C "${buildDir.absolutePath}"
+            meson compile -C "${buildDir.absolutePath}" -v
+            echo === Built library files ===
+            dir "${buildDir.absolutePath}\src\*.dll" 2>nul || echo No DLL files found
         """.trimIndent())
     } else {
         commandLine("bash", "-c", """
@@ -118,7 +120,9 @@ tasks.register<Exec>("buildHarfBuzz") {
                     -Dicu=disabled \
                     --default-library=shared
             fi
-            meson compile -C "${buildDir.absolutePath}"
+            meson compile -C "${buildDir.absolutePath}" -v
+            echo "=== Built library files ==="
+            ls -la "${buildDir.absolutePath}/src/"*harfbuzz* 2>/dev/null || echo "No harfbuzz files found"
         """.trimIndent())
     }
 }
