@@ -50,6 +50,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Build HarfBuzz native library (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          meson setup build/harfbuzz-build harfbuzz -Dglib=disabled -Dgobject=disabled -Dcairo=disabled -Dfreetype=disabled -Dicu=disabled --default-library=shared
+          meson compile -C build/harfbuzz-build -v
+          echo === DLL files ===
+          dir build\harfbuzz-build\src\*.dll
+
       - name: Build and test
         run: ./gradlew clean build test
 
