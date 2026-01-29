@@ -7,11 +7,15 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class HarfBuzzTest {
+    private fun getTestFontBytes(): ByteArray {
+        val fontPath = System.getenv("TEST_FONT_PATH")
+            ?: "harfbuzz/perf/fonts/Roboto-Regular.ttf"
+        return File(fontPath).readBytes()
+    }
+
     @Test
     fun `shape simple text`() {
-        val fontPath = System.getenv("TEST_FONT_PATH") 
-            ?: "/System/Library/Fonts/Helvetica.ttc"
-        val fontBytes = File(fontPath).readBytes()
+        val fontBytes = getTestFontBytes()
 
         HarfBuzzShaper(fontBytes).use { shaper ->
             val result = shaper.shape("Hello")
@@ -32,9 +36,7 @@ class HarfBuzzTest {
 
     @Test
     fun `shape with table overrides`() {
-        val fontPath = System.getenv("TEST_FONT_PATH")
-            ?: "/System/Library/Fonts/Helvetica.ttc"
-        val fontBytes = File(fontPath).readBytes()
+        val fontBytes = getTestFontBytes()
 
         // Empty overrides (no GSUB/GPOS/GDEF) should still work
         val overrides = TableOverrides()
@@ -49,9 +51,7 @@ class HarfBuzzTest {
 
     @Test
     fun `shape RTL text`() {
-        val fontPath = System.getenv("TEST_FONT_PATH")
-            ?: "/System/Library/Fonts/Helvetica.ttc"
-        val fontBytes = File(fontPath).readBytes()
+        val fontBytes = getTestFontBytes()
 
         HarfBuzzShaper(fontBytes).use { shaper ->
             // Even without Arabic glyphs, direction should work
@@ -65,9 +65,7 @@ class HarfBuzzTest {
 
     @Test
     fun `upem is read correctly`() {
-        val fontPath = System.getenv("TEST_FONT_PATH")
-            ?: "/System/Library/Fonts/Helvetica.ttc"
-        val fontBytes = File(fontPath).readBytes()
+        val fontBytes = getTestFontBytes()
 
         HarfBuzzShaper(fontBytes).use { shaper ->
             assertTrue(shaper.upem > 0, "UPEM should be positive")
