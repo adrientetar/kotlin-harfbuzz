@@ -130,7 +130,7 @@ val mesonCompile by tasks.registering(Exec::class) {
     dependsOn(mesonSetup)
     inputs.dir(sourceDir)
     outputs.files(fileTree(buildDir.resolve("src")) {
-        include("*.dll", "*.dylib", "*.so.*")
+        include("libharfbuzz-0.dll", "libharfbuzz.0.dylib", "libharfbuzz.so.0")
     })
 
     workingDir = projectDir
@@ -157,9 +157,9 @@ val mesonCompile by tasks.registering(Exec::class) {
                 meson compile -C "${buildDir.absolutePath}" -v
                 echo "=== Built library files ==="
                 shopt -s nullglob
-                files=("${buildDir.absolutePath}/src/"*harfbuzz*.so* "${buildDir.absolutePath}/src/"*harfbuzz*.dylib)
-                if [ ${#files[@]} -gt 0 ]; then
-                  ls -la "${files[@]}"
+                files=( "${buildDir.absolutePath}/src/"*harfbuzz*.so* "${buildDir.absolutePath}/src/"*harfbuzz*.dylib )
+                if [ ${'$'}{#files[@]} -gt 0 ]; then
+                  ls -la "${'$'}{files[@]}"
                 else
                   echo "No harfbuzz files found"
                 fi
