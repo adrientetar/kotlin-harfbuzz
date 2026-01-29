@@ -130,8 +130,8 @@ tasks.register<Copy>("copyNativeLibrary") {
     from(harfbuzzBuildDir.map { it.dir("src") }) {
         // Only include the actual library file (not symlinks or subset library)
         include("libharfbuzz.0.dylib")   // macOS versioned
-        include("libharfbuzz.so")        // Linux unversioned
-        include("harfbuzz.dll")          // Windows
+        include("libharfbuzz.so.0")      // Linux versioned (actual file)
+        include("harfbuzz-0.dll")        // Windows versioned
     }
     into(nativeLibDir)
     
