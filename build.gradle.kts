@@ -101,7 +101,7 @@ val mesonSetup by tasks.registering(Exec::class) {
                 ${'$'}buildDir = '${buildDir.absolutePath}'
                 ${'$'}sourceDir = '${sourceDir.absolutePath}'
                 if (Test-Path "${'$'}buildDir") { Remove-Item -Recurse -Force "${'$'}buildDir" }
-                meson setup "${'$'}buildDir" "${'$'}sourceDir" -Dglib=disabled -Dgobject=disabled -Dcairo=disabled -Dfreetype=disabled -Dicu=disabled --default-library=shared
+                meson setup "${'$'}buildDir" "${'$'}sourceDir" -Dglib=disabled -Dgobject=disabled -Dcairo=disabled -Dfreetype=disabled -Dicu=disabled --default-library=shared --vsenv
             """.trimIndent(),
         )
     } else {
@@ -130,7 +130,7 @@ val mesonCompile by tasks.registering(Exec::class) {
     dependsOn(mesonSetup)
     inputs.dir(sourceDir)
     outputs.files(fileTree(buildDir.resolve("src")) {
-        include("libharfbuzz-0.dll", "libharfbuzz.0.dylib", "libharfbuzz.so.0")
+        include("harfbuzz.dll", "libharfbuzz.0.dylib", "libharfbuzz.so.0*")
     })
 
     workingDir = projectDir
@@ -180,8 +180,8 @@ tasks.register<Copy>("copyNativeLibrary") {
     from(harfbuzzBuildDir.map { it.dir("src") }) {
         // Only include the actual library file (not symlinks or subset library)
         include("libharfbuzz.0.dylib")   // macOS versioned
-        include("libharfbuzz.so.0")      // Linux versioned (actual file)
-        include("libharfbuzz-0.dll")     // Windows versioned
+        include("libharfbuzz.so.0*")     // Linux versioned (actual file)
+        include("harfbuzz.dll")          // Windows (MSVC)
     }
     into(nativeLibDir)
     
@@ -233,6 +233,7 @@ val allNativeClassifiers = listOf(
     "linux-x64",
     "linux-arm64",
     "windows-x64",
+    "windows-arm64",
 )
 
 val nativeJarsByClassifier: Map<String, TaskProvider<Jar>> =

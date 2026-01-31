@@ -25,6 +25,9 @@ jobs:
           - os: windows-latest
             classifier: windows-x64
             lib-name: harfbuzz.dll
+          - os: windows-11-arm
+            classifier: windows-arm64
+            lib-name: harfbuzz.dll
 
     runs-on: ${{ matrix.os }}
 
@@ -32,6 +35,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+
+      - name: Install meson and ninja (Windows)
+        if: runner.os == 'Windows'
+        run: pip install meson ninja
 
       - name: Install meson and ninja (macOS)
         if: runner.os == 'macOS'
@@ -43,11 +50,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y meson ninja-build
 
-      - name: Install meson and ninja (Windows)
+      - name: Build HarfBuzz (Windows, MSVC)
         if: runner.os == 'Windows'
-        run: pip install meson ninja
+        shell: pwsh
+        run: |
+          meson setup build harfbuzz -Dglib=disabled -Dgobject=disabled -Dcairo=disabled -Dfreetype=disabled -Dicu=disabled --default-library=shared --vsenv
+          meson compile -C build
 
-      - name: Build HarfBuzz
+      - name: Build HarfBuzz (macOS/Linux)
+        if: runner.os != 'Windows'
         run: |
           meson setup build harfbuzz \
             -Dglib=disabled \

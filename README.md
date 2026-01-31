@@ -8,7 +8,7 @@ Kotlin bindings for [HarfBuzz](https://harfbuzz.github.io/) text shaping library
 
 Key features:
 - Minimal API surface (only what's needed for text shaping)
-- Support for `hb_face_create_for_tables` to inject fea-rs compiled GSUB/GPOS/GDEF tables
+- Support for `hb_face_create_for_tables` to inject pre-compiled GSUB/GPOS/GDEF tables
 - Builds HarfBuzz from source via submodule (pinned to 12.3.0)
 - High-level Kotlin wrapper for ergonomic usage
 
@@ -56,7 +56,6 @@ HarfBuzzShaper(fontBytes).use { shaper ->
 ### With Table Overrides (for live preview)
 
 ```kotlin
-// Use fea-rs compiled tables for live preview
 val overrides = TableOverrides(
     gsub = gsubBytes,
     gpos = gposBytes,
@@ -86,6 +85,7 @@ For CI/CD, GitHub Actions builds native libraries for all platforms:
 - Linux x64
 - Linux ARM64
 - Windows x64
+- Windows ARM64
 
 ## API Reference
 
