@@ -1,3 +1,8 @@
+import java.nio.file.Files
+
+import org.gradle.api.tasks.testing.Test
+import org.gradle.language.jvm.tasks.ProcessResources
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     id("java-library")
@@ -21,10 +26,6 @@ kotlin {
 dependencies {
     implementation(libs.jna)
     testImplementation(kotlin("test"))
-}
-
-tasks.test {
-    useJUnitPlatform()
 }
 
 // Platform detection
@@ -83,7 +84,7 @@ val mesonSetup by tasks.registering(Exec::class) {
     doFirst {
         if (!sourceDir.exists()) {
             throw GradleException(
-                "HarfBuzz source not found. Run: git clone --depth 1 https://github.com/harfbuzz/harfbuzz.git"
+                "HarfBuzz source not found. Run: git submodule update --init --recursive"
             )
         }
     }
@@ -130,7 +131,9 @@ val mesonCompile by tasks.registering(Exec::class) {
     dependsOn(mesonSetup)
     inputs.dir(sourceDir)
     outputs.files(fileTree(buildDir.resolve("src")) {
-        include("harfbuzz.dll", "libharfbuzz.0.dylib", "libharfbuzz.so.0*")
+        // Track the actual produced library file, not symlinks (Gradle can error on broken symlinks).
+        include("harfbuzz.dll", "libharfbuzz.0.dylib", "libharfbuzz.so.0.*")
+        exclude { element -> Files.isSymbolicLink(element.file.toPath()) }
     })
 
     workingDir = projectDir
@@ -168,46 +171,66 @@ val mesonCompile by tasks.registering(Exec::class) {
     }
 }
 
-tasks.register("buildHarfBuzz") {
+val buildHarfBuzz by tasks.registering {
     description = "Build HarfBuzz native library using meson"
     dependsOn(mesonSetup, mesonCompile)
 }
 
-tasks.register<Copy>("copyNativeLibrary") {
+val copyNativeLibrary by tasks.registering(Copy::class) {
     description = "Copy the built native library to platform-specific directory"
-    dependsOn("buildHarfBuzz")
-    
+    dependsOn(buildHarfBuzz)
+
     from(harfbuzzBuildDir.map { it.dir("src") }) {
         // Only include the actual library file (not symlinks or subset library)
         include("libharfbuzz.0.dylib")   // macOS versioned
-        include("libharfbuzz.so.0*")     // Linux versioned (actual file)
+        include("libharfbuzz.so.0.*")    // Linux versioned (actual file; excludes symlinks)
         include("harfbuzz.dll")          // Windows (MSVC)
+        exclude { element -> Files.isSymbolicLink(element.file.toPath()) }
     }
     into(nativeLibDir)
-    
+
     // Rename to standard name
     rename { nativeLibName.get() }
 }
 
-tasks.register("prepareNative") {
+val verifyNativeLibrary by tasks.registering {
+    description = "Verify the expected native library exists and is not a symlink"
+    dependsOn(copyNativeLibrary)
+
+    doLast {
+        val expectedFile = nativeLibDir.get().asFile.resolve(nativeLibName.get())
+        if (!expectedFile.exists()) {
+            throw GradleException("Native library not found: ${expectedFile.absolutePath}")
+        }
+        if (!expectedFile.isFile) {
+            throw GradleException("Native library path is not a file: ${expectedFile.absolutePath}")
+        }
+        if (Files.isSymbolicLink(expectedFile.toPath())) {
+            throw GradleException("Native library must not be a symlink: ${expectedFile.absolutePath}")
+        }
+    }
+}
+
+val prepareNative by tasks.registering {
     description = "Prepare native libraries for current platform"
-    dependsOn("copyNativeLibrary")
+    dependsOn(copyNativeLibrary)
 }
 
 // Copy native library to resources for testing
-tasks.register<Copy>("copyNativeLibraryForTest") {
+val copyNativeLibraryForTest by tasks.registering(Copy::class) {
     description = "Copy native library to resources for testing"
-    dependsOn("copyNativeLibrary")
+    dependsOn(verifyNativeLibrary)
     from(nativeLibDir)
     into(layout.buildDirectory.dir(platformClassifier.map { "resources/main/natives/$it" }))
 }
 
-tasks.named("processResources") {
-    dependsOn("copyNativeLibraryForTest")
+tasks.named<ProcessResources>("processResources") {
+    dependsOn(copyNativeLibraryForTest)
 }
 
-tasks.test {
-    dependsOn("copyNativeLibraryForTest")
+tasks.named<Test>("test") {
+    useJUnitPlatform()
+    dependsOn(copyNativeLibraryForTest)
 }
 
 // Base JAR with only Kotlin code (no native libraries)
@@ -218,7 +241,7 @@ tasks.jar {
 
 // Platform-specific JAR containing only the native library
 val nativeJar by tasks.registering(Jar::class) {
-    dependsOn("copyNativeLibrary")
+    dependsOn(verifyNativeLibrary)
     archiveClassifier.set(platformClassifier)
     from(nativeLibDir) {
         into(platformClassifier.map { "natives/$it" })
