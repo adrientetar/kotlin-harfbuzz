@@ -110,7 +110,7 @@ jobs:
 
       - name: Build base JAR
         run: |
-          ./gradlew jar sourcesJar javadocJar -Prelease \
+          ./gradlew jar sourcesJar plainJavadocJar -Prelease \
             -x buildHarfBuzz \
             -x copyNativeLibrary \
             -x copyNativeLibraryForTest
