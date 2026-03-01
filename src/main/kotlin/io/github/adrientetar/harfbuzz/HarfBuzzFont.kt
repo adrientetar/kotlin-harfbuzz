@@ -38,9 +38,9 @@ class TableOverrides(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is TableOverrides) return false
-        return gsub.contentEquals(other.gsub)
-            && gpos.contentEquals(other.gpos)
-            && gdef.contentEquals(other.gdef)
+        return gsub contentEquals other.gsub
+            && gpos contentEquals other.gpos
+            && gdef contentEquals other.gdef
     }
 
     override fun hashCode(): Int {
@@ -49,9 +49,6 @@ class TableOverrides(
         result = 31 * result + (gdef?.contentHashCode() ?: 0)
         return result
     }
-
-    private fun ByteArray?.contentEquals(other: ByteArray?): Boolean =
-        if (this == null) other == null else other != null && this.contentEquals(other)
 }
 
 /**
