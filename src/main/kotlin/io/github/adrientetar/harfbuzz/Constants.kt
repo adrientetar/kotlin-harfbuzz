@@ -1,7 +1,7 @@
 package io.github.adrientetar.harfbuzz
 
 /** Memory modes for hb_blob_create */
-object HbMemoryMode {
+internal object HbMemoryMode {
     const val DUPLICATE = 0
     const val READONLY = 1
     const val WRITABLE = 2
@@ -9,7 +9,7 @@ object HbMemoryMode {
 }
 
 /** Text directions */
-object HbDirection {
+internal object HbDirection {
     const val INVALID = 0
     const val LTR = 4
     const val RTL = 5
@@ -18,14 +18,14 @@ object HbDirection {
 }
 
 /** Buffer content types */
-object HbBufferContentType {
+internal object HbBufferContentType {
     const val INVALID = 0
     const val UNICODE = 1
     const val GLYPHS = 2
 }
 
 /** Common OpenType table tags */
-object HbTag {
+internal object HbTag {
     val GSUB = hbTag('G', 'S', 'U', 'B')
     val GPOS = hbTag('G', 'P', 'O', 'S')
     val GDEF = hbTag('G', 'D', 'E', 'F')
@@ -47,11 +47,11 @@ object HbTag {
  * Create an OpenType tag from 4 characters.
  * Tags are big-endian 4-byte integers.
  */
-fun hbTag(c1: Char, c2: Char, c3: Char, c4: Char): Int =
+internal fun hbTag(c1: Char, c2: Char, c3: Char, c4: Char): Int =
     (c1.code shl 24) or (c2.code shl 16) or (c3.code shl 8) or c4.code
 
 /** Convert tag int back to string for debugging */
-fun tagToString(tag: Int): String = buildString {
+internal fun tagToString(tag: Int): String = buildString {
     append((tag shr 24 and 0xFF).toChar())
     append((tag shr 16 and 0xFF).toChar())
     append((tag shr 8 and 0xFF).toChar())

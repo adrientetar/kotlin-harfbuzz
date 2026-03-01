@@ -17,7 +17,7 @@ class HarfBuzzTest {
     fun `shape simple text`() {
         val fontBytes = getTestFontBytes()
 
-        HarfBuzzShaper(fontBytes).use { shaper ->
+        HarfBuzzFont(fontBytes).use { shaper ->
             val result = shaper.shape("Hello")
 
             assertEquals(5, result.size, "Should have 5 glyphs for 'Hello'")
@@ -42,7 +42,7 @@ class HarfBuzzTest {
         val overrides = TableOverrides()
 
         assertDoesNotThrow {
-            HarfBuzzShaper(fontBytes, overrides).use { shaper ->
+            HarfBuzzFont(fontBytes, overrides).use { shaper ->
                 val result = shaper.shape("Test")
                 assertEquals(4, result.size)
             }
@@ -53,7 +53,7 @@ class HarfBuzzTest {
     fun `shape RTL text`() {
         val fontBytes = getTestFontBytes()
 
-        HarfBuzzShaper(fontBytes).use { shaper ->
+        HarfBuzzFont(fontBytes).use { shaper ->
             // Even without Arabic glyphs, direction should work
             val result = shaper.shape("abc", TextDirection.RTL)
             assertEquals(3, result.size)
@@ -67,7 +67,7 @@ class HarfBuzzTest {
     fun `upem is read correctly`() {
         val fontBytes = getTestFontBytes()
 
-        HarfBuzzShaper(fontBytes).use { shaper ->
+        HarfBuzzFont(fontBytes).use { shaper ->
             assertTrue(shaper.upem > 0, "UPEM should be positive")
             assertTrue(shaper.upem in 16..65535, "UPEM should be in valid range")
         }
@@ -75,7 +75,7 @@ class HarfBuzzTest {
 
     @Test
     fun `virtual shaper with codepoints`() {
-        // Test VirtualHarfBuzzShaper with hb_buffer_add (which requires content type fix)
+        // Test VirtualHarfBuzzFont with hb_buffer_add (which requires content type fix)
         val upem = 1000
         val glyphOrder = listOf(".notdef", "A", "B", "C")
         val unicodeToGid = mapOf(
@@ -85,7 +85,7 @@ class HarfBuzzTest {
         )
         val hAdvances = intArrayOf(0, 500, 600, 550) // widths for .notdef, A, B, C
 
-        val shaper = VirtualHarfBuzzShaper(
+        val shaper = VirtualHarfBuzzFont(
             upem = upem,
             glyphOrder = glyphOrder,
             unicodeToGid = unicodeToGid,
@@ -103,9 +103,9 @@ class HarfBuzzTest {
             assertEquals(3, result.size, "Should have 3 shaped glyphs")
 
             // Check glyph IDs match the unicodeToGid mapping
-            assertEquals(1, result[0].codepoint, "First glyph should be GID 1 (A)")
-            assertEquals(2, result[1].codepoint, "Second glyph should be GID 2 (B)")
-            assertEquals(3, result[2].codepoint, "Third glyph should be GID 3 (C)")
+            assertEquals(1, result[0].glyphId, "First glyph should be GID 1 (A)")
+            assertEquals(2, result[1].glyphId, "Second glyph should be GID 2 (B)")
+            assertEquals(3, result[2].glyphId, "Third glyph should be GID 3 (C)")
 
             // Check clusters are preserved
             assertEquals(0, result[0].cluster)
@@ -127,7 +127,7 @@ class HarfBuzzTest {
         val unicodeToGid = mapOf('A'.code to 1, 'B'.code to 2)
         val hAdvances = intArrayOf(0, 500, 600, 900)
 
-        val shaper = VirtualHarfBuzzShaper(
+        val shaper = VirtualHarfBuzzFont(
             upem = upem,
             glyphOrder = glyphOrder,
             unicodeToGid = unicodeToGid,
@@ -137,14 +137,14 @@ class HarfBuzzTest {
 
         shaper.use {
             // Address the unencoded "ligature_AB" glyph (GID 3) via prefix
-            val gid3Codepoint = (VirtualHarfBuzzShaper.CH_GID_PREFIX + 3u).toInt()
+            val gid3Codepoint = (VirtualHarfBuzzFont.CH_GID_PREFIX + 3u).toInt()
             val codepoints = intArrayOf(gid3Codepoint)
             val clusters = intArrayOf(0)
 
             val result = it.shapeCodepoints(codepoints, clusters)
 
             assertEquals(1, result.size)
-            assertEquals(3, result[0].codepoint, "Should resolve to GID 3")
+            assertEquals(3, result[0].glyphId, "Should resolve to GID 3")
             assertEquals(900, result[0].xAdvance, "ligature_AB should have advance 900")
         }
     }

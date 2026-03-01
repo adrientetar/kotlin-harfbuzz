@@ -1,52 +1,42 @@
-# kotlin-harfbuzz
+<div align="center">
 
-Kotlin bindings for [HarfBuzz](https://harfbuzz.github.io/) text shaping library using JNA Direct Mapping.
+kotlin-harfbuzz
+===============
 
-## Overview
+**Kotlin bindings for [HarfBuzz] text shaping using JNA Direct Mapping**
 
-`kotlin-harfbuzz` provides Kotlin bindings to the HarfBuzz C library for OpenType text shaping. It uses JNA Direct Mapping for good performance.
+[![Kotlin](https://img.shields.io/badge/Language-Kotlin-7f52ff.svg)](https://kotlinlang.org/)
+[![Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE.txt)
+[![Maven central](https://img.shields.io/maven-central/v/io.github.adrientetar/kotlin-harfbuzz?color=brightgreen)](https://central.sonatype.com/artifact/io.github.adrientetar/kotlin-harfbuzz)
 
-Key features:
-- Minimal API surface (only what's needed for text shaping)
-- Support for `hb_face_create_for_tables` to inject pre-compiled GSUB/GPOS/GDEF tables
-- Builds HarfBuzz from source via submodule (pinned to 12.3.0)
-- High-level Kotlin wrapper for ergonomic usage
+</div>
 
-## Building
+This library provides Kotlin bindings to the [HarfBuzz] C library for OpenType text shaping. It uses JNA Direct Mapping for good performance, with a minimal API surface focused on text shaping and support for injecting pre-compiled GSUB/GPOS/GDEF tables.
 
-### Prerequisites
+HarfBuzz is built from source via submodule (pinned to 12.3.2).
 
-- JDK 21+
-- [meson](https://mesonbuild.com/) and [ninja](https://ninja-build.org/) for building HarfBuzz
+Maven library
+-------------
 
-On macOS:
-```bash
-brew install meson ninja
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("io.github.adrientetar:kotlin-harfbuzz:1.0.0")
+}
 ```
 
-On Linux:
-```bash
-sudo apt-get install meson ninja-build
-```
-
-### Clone and Build
-
-```bash
-git clone --recurse-submodules https://github.com/nicebyte/kotlin-harfbuzz.git
-cd kotlin-harfbuzz
-./gradlew build
-```
-
-The build will automatically compile HarfBuzz 12.3.0 from the included submodule.
-
-## Usage
+Usage
+-----
 
 ### Basic Text Shaping
 
 ```kotlin
 val fontBytes = File("myfont.ttf").readBytes()
-HarfBuzzShaper(fontBytes).use { shaper ->
-    val glyphs = shaper.shape("Hello")
+HarfBuzzFont(fontBytes).use { font ->
+    val glyphs = font.shape("Hello")
     glyphs.forEach { glyph ->
         println("Glyph ID: ${glyph.glyphId}, Advance: ${glyph.xAdvance}")
     }
@@ -62,68 +52,52 @@ val overrides = TableOverrides(
     gdef = gdefBytes
 )
 
-HarfBuzzShaper(fontBytes, overrides).use { shaper ->
-    val glyphs = shaper.shape("Hello")
+HarfBuzzFont(fontBytes, overrides).use { font ->
+    val glyphs = font.shape("Hello")
 }
 ```
 
 ### Explicit Text Direction
 
 ```kotlin
-HarfBuzzShaper(fontBytes).use { shaper ->
-    val rtlGlyphs = shaper.shape("مرحبا", TextDirection.RTL)
+HarfBuzzFont(fontBytes).use { font ->
+    val rtlGlyphs = font.shape("مرحبا", TextDirection.RTL)
 }
 ```
 
-## Building Native Libraries
+See [the tests](/src/test/kotlin/io/github/adrientetar/harfbuzz) for more sample code.
 
-The native library is built automatically during `./gradlew build` using the HarfBuzz submodule (pinned to version 12.3.0).
+API reference
+-------------
 
-For CI/CD, GitHub Actions builds native libraries for all platforms:
-- macOS ARM64 (Apple Silicon)
-- macOS x64 (Intel)
-- Linux x64
-- Linux ARM64
-- Windows x64
-- Windows ARM64
+| Class | Description |
+|-------|-------------|
+| `Font` | Common interface for HarfBuzz fonts. Defines `upem`, `shape()`, `close()`, and `version()`. |
+| `HarfBuzzFont` | Font backed by a real font file (binary). Implements `Font`. |
+| `VirtualHarfBuzzFont` | Font backed by in-memory tables and custom font callbacks, for editor use without a full binary font. Implements `Font`. Also offers `shapeCodepoints()` for explicit codepoint+cluster input. |
+| `Buffer` | Reusable native buffer for repeated shaping. Pass to `shape()` to avoid per-call allocation. |
+| `Feature` | OpenType feature to enable/disable (e.g., `"kern"`, `"liga"`). Supports `fromString()` for HarfBuzz feature syntax. |
+| `FeatureSet` | Pre-allocated set of features for zero-allocation shaping. |
+| `ShapedGlyph` | Result of shaping: `glyphId`, `cluster`, `xAdvance`, `yAdvance`, `xOffset`, `yOffset` (in font units). |
+| `TableOverrides` | Optional GSUB/GPOS/GDEF table data to override during shaping. |
+| `TextDirection` | `LTR` or `RTL` text direction for shaping. |
 
-## API Reference
+Build
+-----
 
-### HarfBuzzShaper
+You need the following installed:
 
-The main high-level class for text shaping.
+- JDK 11 or later
+- [meson] and [ninja] (for building HarfBuzz from source)
 
-- `HarfBuzzShaper(fontData: ByteArray, tableOverrides: TableOverrides? = null)` - Create a shaper from font bytes
-- `shape(text: String, direction: TextDirection? = null): List<ShapedGlyph>` - Shape text into positioned glyphs
-- `upem: Int` - Units per em of the font
-- `close()` - Release native resources (implements `AutoCloseable`)
+```bash
+git clone --recurse-submodules https://github.com/nicebyte/kotlin-harfbuzz.git
+cd kotlin-harfbuzz
+./gradlew build
+```
 
-### ShapedGlyph
+For CI/CD, GitHub Actions builds native libraries for macOS (ARM64, x64), Linux (x64, ARM64), and Windows (x64, ARM64).
 
-Result of shaping a single glyph:
-
-- `glyphId: Int` - Glyph ID in the font
-- `cluster: Int` - Original text position
-- `xAdvance: Int` - Horizontal advance in font units
-- `yAdvance: Int` - Vertical advance in font units
-- `xOffset: Int` - Horizontal offset in font units
-- `yOffset: Int` - Vertical offset in font units
-
-### TableOverrides
-
-Optional OpenType tables to override during shaping:
-
-- `gsub: ByteArray?` - GSUB table data
-- `gpos: ByteArray?` - GPOS table data
-- `gdef: ByteArray?` - GDEF table data
-
-### TextDirection
-
-Text direction for shaping:
-
-- `LTR` - Left to right
-- `RTL` - Right to left
-
-## License
-
-MIT License
+[HarfBuzz]: https://harfbuzz.github.io/
+[meson]: https://mesonbuild.com/
+[ninja]: https://ninja-build.org/

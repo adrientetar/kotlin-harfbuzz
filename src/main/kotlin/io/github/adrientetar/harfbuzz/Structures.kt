@@ -12,7 +12,7 @@ import com.sun.jna.Structure
  * `start` and `end` define the range of glyphs to apply to (use 0 and -1 for all).
  */
 @Structure.FieldOrder("tag", "value", "start", "end")
-open class HbFeature : Structure {
+internal open class HbFeature : Structure {
     @JvmField var tag: Int = 0       // hb_tag_t (4-byte feature tag)
     @JvmField var value: Int = 0     // 0 = disable, 1 = enable
     @JvmField var start: Int = 0     // start index (0 = from beginning)
@@ -72,7 +72,7 @@ open class HbFeature : Structure {
  * `cluster` maps back to the original text position.
  */
 @Structure.FieldOrder("codepoint", "mask", "cluster", "var1", "var2")
-open class HbGlyphInfo : Structure {
+internal open class HbGlyphInfo : Structure {
     @JvmField var codepoint: Int = 0  // glyph ID after shaping
     @JvmField var mask: Int = 0
     @JvmField var cluster: Int = 0
@@ -92,7 +92,7 @@ open class HbGlyphInfo : Structure {
  * All values are in font units.
  */
 @Structure.FieldOrder("x_advance", "y_advance", "x_offset", "y_offset", "var")
-open class HbGlyphPosition : Structure {
+internal open class HbGlyphPosition : Structure {
     @JvmField var x_advance: Int = 0
     @JvmField var y_advance: Int = 0
     @JvmField var x_offset: Int = 0

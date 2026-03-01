@@ -9,7 +9,7 @@ import com.sun.jna.Pointer
  * HarfBuzz calls this to retrieve table data by tag.
  * Return an hb_blob_t* for the requested table, or null if not available.
  */
-interface HbReferenceTableFunc : Callback {
+internal interface HbReferenceTableFunc : Callback {
     /**
      * @param face The face requesting the table (can be used for delegation)
      * @param tag OpenType table tag (e.g., HB_TAG_GSUB)
@@ -22,7 +22,7 @@ interface HbReferenceTableFunc : Callback {
 /**
  * Destroy callback (typically null for our use case since we manage memory in Kotlin).
  */
-interface HbDestroyFunc : Callback {
+internal interface HbDestroyFunc : Callback {
     fun invoke(userData: Pointer?)
 }
 
@@ -31,7 +31,7 @@ interface HbDestroyFunc : Callback {
  *
  * Return non-zero and set `glyph` when a mapping exists.
  */
-interface HbNominalGlyphFunc : Callback {
+internal interface HbNominalGlyphFunc : Callback {
     fun invoke(
         font: Pointer?,
         fontData: Pointer?,
@@ -44,7 +44,7 @@ interface HbNominalGlyphFunc : Callback {
 /**
  * Callback for hb_font_funcs_set_glyph_h_advance_func.
  */
-interface HbGlyphHAdvanceFunc : Callback {
+internal interface HbGlyphHAdvanceFunc : Callback {
     fun invoke(
         font: Pointer?,
         fontData: Pointer?,
@@ -59,7 +59,7 @@ interface HbGlyphHAdvanceFunc : Callback {
  * Should write a NUL-terminated UTF-8 string into `name` up to `size` bytes.
  * Return non-zero on success.
  */
-interface HbGlyphNameFunc : Callback {
+internal interface HbGlyphNameFunc : Callback {
     fun invoke(
         font: Pointer?,
         fontData: Pointer?,

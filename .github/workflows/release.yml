@@ -110,7 +110,7 @@ jobs:
 
       - name: Build base JAR
         run: |
-          ./gradlew jar sourcesJar javadocJar \
+          ./gradlew jar sourcesJar javadocJar -Prelease \
             -x buildHarfBuzz \
             -x copyNativeLibrary \
             -x copyNativeLibraryForTest
@@ -122,7 +122,7 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_SIGNING_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_SIGNING_PASSWORD }}
         run: |
-          ./gradlew publishToMavenCentral --no-configuration-cache \
+          ./gradlew publishToMavenCentral --no-configuration-cache -Prelease \
             -x buildHarfBuzz \
             -x copyNativeLibrary \
             -x copyNativeLibraryForTest

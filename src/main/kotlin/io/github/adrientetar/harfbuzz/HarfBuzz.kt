@@ -10,7 +10,7 @@ import com.sun.jna.Pointer
  * Only exposes the minimal API surface needed for text shaping with
  * optional GSUB/GPOS/GDEF table injection.
  */
-object HarfBuzz {
+internal object HarfBuzz {
     init {
         Native.register(NativeLoader.loadLibrary())
     }
@@ -102,6 +102,8 @@ object HarfBuzz {
     @JvmStatic external fun hb_buffer_create(): Pointer?
     
     @JvmStatic external fun hb_buffer_destroy(buffer: Pointer?)
+
+    @JvmStatic external fun hb_buffer_pre_allocate(buffer: Pointer?, size: Int): Int
     
     @JvmStatic external fun hb_buffer_add_utf16(
         buffer: Pointer?,
@@ -120,7 +122,15 @@ object HarfBuzz {
     @JvmStatic external fun hb_buffer_set_content_type(buffer: Pointer?, content_type: Int)
 
     @JvmStatic external fun hb_buffer_set_direction(buffer: Pointer?, direction: Int)
-    
+
+    @JvmStatic external fun hb_buffer_set_script(buffer: Pointer?, script: Int)
+
+    @JvmStatic external fun hb_buffer_set_language(buffer: Pointer?, language: Pointer?)
+
+    @JvmStatic external fun hb_script_from_string(str: ByteArray?, len: Int): Int
+
+    @JvmStatic external fun hb_language_from_string(str: ByteArray?, len: Int): Pointer?
+
     @JvmStatic external fun hb_buffer_guess_segment_properties(buffer: Pointer?)
     
     @JvmStatic external fun hb_buffer_get_length(buffer: Pointer?): Int
@@ -143,4 +153,18 @@ object HarfBuzz {
         features: Pointer?, // hb_feature_t*, can be null
         num_features: Int,
     )
+
+    @JvmStatic external fun hb_buffer_clear_contents(buffer: Pointer?)
+
+    // ========== Features ==========
+
+    @JvmStatic external fun hb_feature_from_string(
+        str: ByteArray?,
+        len: Int,
+        feature: Pointer?, // hb_feature_t* out
+    ): Int
+
+    // ========== Version ==========
+
+    @JvmStatic external fun hb_version_string(): String
 }

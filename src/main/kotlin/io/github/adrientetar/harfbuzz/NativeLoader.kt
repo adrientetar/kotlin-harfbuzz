@@ -2,7 +2,9 @@ package io.github.adrientetar.harfbuzz
 
 import com.sun.jna.NativeLibrary
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
+import java.security.MessageDigest
 
 /**
  * Handles platform-specific loading of the HarfBuzz native library.
@@ -10,7 +12,7 @@ import java.nio.file.Files
  * Extracts the appropriate binary from JAR resources to a temp directory
  * and loads it via JNA.
  */
-object NativeLoader {
+internal object NativeLoader {
     private const val LIB_NAME = "harfbuzz"
     
     @Volatile
@@ -31,29 +33,41 @@ object NativeLoader {
 
     private fun doLoad(): NativeLibrary {
         val platform = detectPlatform()
-        val resourcePath = "natives/$platform/${libraryFileName()}"
+        val libFileName = libraryFileName()
+        val resourcePath = "natives/$platform/$libFileName"
         
         // Try loading from resources (JAR)
-        val resourceStream = javaClass.classLoader.getResourceAsStream(resourcePath)
-        if (resourceStream != null) {
-            val tempDir = Files.createTempDirectory("kotlin-harfbuzz").toFile()
-            tempDir.deleteOnExit()
-            
-            val tempFile = File(tempDir, libraryFileName())
-            tempFile.deleteOnExit()
-            
-            resourceStream.use { input ->
-                tempFile.outputStream().use { output ->
-                    input.copyTo(output)
+        val cl = javaClass.classLoader ?: Thread.currentThread().contextClassLoader
+        val resourceBytes = cl?.getResourceAsStream(resourcePath)?.use { it.readBytes() }
+        if (resourceBytes != null) {
+            // Use content-hash directory to reuse across restarts and avoid temp file accumulation
+            val hash = MessageDigest.getInstance("SHA-256")
+                .digest(resourceBytes)
+                .take(8)
+                .joinToString("") { "%02x".format(it) }
+            val cacheDir = File(System.getProperty("java.io.tmpdir"), "kotlin-harfbuzz-$hash")
+            val libFile = File(cacheDir, libFileName)
+
+            if (!libFile.exists()) {
+                try {
+                    cacheDir.mkdirs()
+                    // Write to a temp file first, then rename atomically to avoid partial files
+                    val tmpFile = File.createTempFile("harfbuzz", null, cacheDir)
+                    try {
+                        tmpFile.writeBytes(resourceBytes)
+                        if (!System.getProperty("os.name").lowercase().contains("windows")) {
+                            tmpFile.setExecutable(true)
+                        }
+                        tmpFile.renameTo(libFile)
+                    } finally {
+                        tmpFile.delete() // clean up if rename succeeded or failed
+                    }
+                } catch (e: IOException) {
+                    error("Failed to extract native library to $libFile: ${e.message}")
                 }
             }
             
-            // Make executable on Unix
-            if (!System.getProperty("os.name").lowercase().contains("windows")) {
-                tempFile.setExecutable(true)
-            }
-            
-            return NativeLibrary.getInstance(tempFile.absolutePath)
+            return NativeLibrary.getInstance(libFile.absolutePath)
         }
         
         // Fallback: try system library path
