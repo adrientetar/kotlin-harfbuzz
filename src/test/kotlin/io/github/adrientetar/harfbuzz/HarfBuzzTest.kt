@@ -72,7 +72,7 @@ class HarfBuzzTest {
         val fontBytes = getTestFontBytes()
 
         HarfBuzzFont(fontBytes).use { font ->
-            val result = font.shape("abc", TextDirection.RTL)
+            val result = font.shape("abc", Direction.RTL)
             assertEquals(3, result.size)
         }
     }
@@ -275,9 +275,9 @@ class HarfBuzzTest {
         font.use {
             val result = it.shape("ABC")
             assertEquals(3, result.size)
-            assertEquals(1, result[0].glyphId)
-            assertEquals(2, result[1].glyphId)
-            assertEquals(3, result[2].glyphId)
+            assertEquals(1, result[0].codepoint)
+            assertEquals(2, result[1].codepoint)
+            assertEquals(3, result[2].codepoint)
         }
     }
 
@@ -290,9 +290,9 @@ class HarfBuzzTest {
             val result = it.shapeCodepoints(codepoints, clusters)
 
             assertEquals(3, result.size)
-            assertEquals(1, result[0].glyphId)
-            assertEquals(2, result[1].glyphId)
-            assertEquals(3, result[2].glyphId)
+            assertEquals(1, result[0].codepoint)
+            assertEquals(2, result[1].codepoint)
+            assertEquals(3, result[2].codepoint)
 
             assertEquals(0, result[0].cluster)
             assertEquals(1, result[1].cluster)
@@ -320,7 +320,7 @@ class HarfBuzzTest {
             val result = it.shapeCodepoints(codepoints, clusters)
 
             assertEquals(1, result.size)
-            assertEquals(3, result[0].glyphId)
+            assertEquals(3, result[0].codepoint)
             assertEquals(900, result[0].xAdvance)
         }
     }

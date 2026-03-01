@@ -7,10 +7,11 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 /**
- * Result of shaping a single glyph.
+ * Per-glyph shaping result, combining [hb_glyph_info_t][https://harfbuzz.github.io/harfbuzz-hb-buffer.html#hb-glyph-info-t]
+ * and [hb_glyph_position_t][https://harfbuzz.github.io/harfbuzz-hb-buffer.html#hb-glyph-position-t].
  */
-data class ShapedGlyph(
-    val glyphId: Int,
+data class GlyphInfo(
+    val codepoint: Int,
     val cluster: Int,
     val xAdvance: Int,
     val yAdvance: Int,
@@ -21,7 +22,7 @@ data class ShapedGlyph(
 /**
  * Text direction for shaping.
  */
-enum class TextDirection(val hbValue: Int) {
+enum class Direction(val hbValue: Int) {
     LTR(HbDirection.LTR),
     RTL(HbDirection.RTL),
 }
@@ -151,30 +152,30 @@ class HarfBuzzFont(
      */
     override fun shape(
         text: String,
-        direction: TextDirection?,
+        direction: Direction?,
         script: String?,
         language: String?,
         features: List<Feature>?,
         buffer: Buffer?,
-    ): List<ShapedGlyph> = doShape(text, direction, script, language, features, buffer)
+    ): List<GlyphInfo> = doShape(text, direction, script, language, features, buffer)
 
     override fun shape(
         text: String,
-        direction: TextDirection?,
+        direction: Direction?,
         script: String?,
         language: String?,
         features: FeatureSet,
         buffer: Buffer?,
-    ): List<ShapedGlyph> = doShape(text, direction, script, language, features, buffer)
+    ): List<GlyphInfo> = doShape(text, direction, script, language, features, buffer)
 
     private fun doShape(
         text: String,
-        direction: TextDirection?,
+        direction: Direction?,
         script: String?,
         language: String?,
         features: Any?,
         buffer: Buffer?,
-    ): List<ShapedGlyph> {
+    ): List<GlyphInfo> {
         if (text.isEmpty()) return emptyList()
 
         return shapingLock.withLock {

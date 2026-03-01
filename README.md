@@ -38,7 +38,7 @@ val fontBytes = File("myfont.ttf").readBytes()
 HarfBuzzFont(fontBytes).use { font ->
     val glyphs = font.shape("Hello")
     glyphs.forEach { glyph ->
-        println("Glyph ID: ${glyph.glyphId}, Advance: ${glyph.xAdvance}")
+        println("Glyph ID: ${glyph.codepoint}, Advance: ${glyph.xAdvance}")
     }
 }
 ```
@@ -61,7 +61,7 @@ HarfBuzzFont(fontBytes, overrides).use { font ->
 
 ```kotlin
 HarfBuzzFont(fontBytes).use { font ->
-    val rtlGlyphs = font.shape("مرحبا", TextDirection.RTL)
+    val rtlGlyphs = font.shape("مرحبا", Direction.RTL)
 }
 ```
 
@@ -78,9 +78,9 @@ API reference
 | `Buffer` | Reusable native buffer for repeated shaping. Pass to `shape()` to avoid per-call allocation. |
 | `Feature` | OpenType feature to enable/disable (e.g., `"kern"`, `"liga"`). Supports `fromString()` for HarfBuzz feature syntax. |
 | `FeatureSet` | Pre-allocated set of features for zero-allocation shaping. |
-| `ShapedGlyph` | Result of shaping: `glyphId`, `cluster`, `xAdvance`, `yAdvance`, `xOffset`, `yOffset` (in font units). |
+| `GlyphInfo` | Result of shaping: `codepoint`, `cluster`, `xAdvance`, `yAdvance`, `xOffset`, `yOffset` (in font units). |
 | `TableOverrides` | Optional GSUB/GPOS/GDEF table data to override during shaping. |
-| `TextDirection` | `LTR` or `RTL` text direction for shaping. |
+| `Direction` | `LTR` or `RTL` text direction for shaping. |
 
 Build
 -----

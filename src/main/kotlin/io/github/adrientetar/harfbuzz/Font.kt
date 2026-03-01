@@ -24,22 +24,22 @@ interface Font : AutoCloseable {
      */
     fun shape(
         text: String,
-        direction: TextDirection? = null,
+        direction: Direction? = null,
         script: String? = null,
         language: String? = null,
         features: List<Feature>? = null,
         buffer: Buffer? = null,
-    ): List<ShapedGlyph>
+    ): List<GlyphInfo>
 
     /**
      * Shape a text string with a pre-allocated [FeatureSet] for zero-allocation feature passing.
      */
     fun shape(
         text: String,
-        direction: TextDirection? = null,
+        direction: Direction? = null,
         script: String? = null,
         language: String? = null,
         features: FeatureSet,
         buffer: Buffer? = null,
-    ): List<ShapedGlyph>
+    ): List<GlyphInfo>
 }

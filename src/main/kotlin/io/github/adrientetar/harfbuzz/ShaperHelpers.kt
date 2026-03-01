@@ -53,7 +53,7 @@ internal object ShaperHelpers {
      */
     fun setSegmentProperties(
         buffer: Pointer,
-        direction: TextDirection?,
+        direction: Direction?,
         script: String?,
         language: String?,
     ) {
@@ -80,7 +80,7 @@ internal object ShaperHelpers {
      * hb_glyph_info_t layout:     [codepoint:i32, mask:i32, cluster:i32, var1:i32, var2:i32] = 5 ints
      * hb_glyph_position_t layout: [x_advance:i32, y_advance:i32, x_offset:i32, y_offset:i32, var:i32] = 5 ints
      */
-    fun extractGlyphs(buffer: Pointer): List<ShapedGlyph> {
+    fun extractGlyphs(buffer: Pointer): List<GlyphInfo> {
         val count = HarfBuzz.hb_buffer_get_length(buffer)
         if (count == 0) return emptyList()
 
@@ -95,8 +95,8 @@ internal object ShaperHelpers {
 
         return (0 until count).map { i ->
             val ii = i * FIELDS_PER_STRUCT
-            ShapedGlyph(
-                glyphId = infos[ii],         // codepoint field
+            GlyphInfo(
+                codepoint = infos[ii],         // codepoint field
                 cluster = infos[ii + 2],     // cluster field (skip mask)
                 xAdvance = positions[ii],
                 yAdvance = positions[ii + 1],

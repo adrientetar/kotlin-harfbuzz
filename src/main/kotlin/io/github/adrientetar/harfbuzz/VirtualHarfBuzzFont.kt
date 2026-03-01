@@ -177,12 +177,12 @@ class VirtualHarfBuzzFont(
      */
     override fun shape(
         text: String,
-        direction: TextDirection?,
+        direction: Direction?,
         script: String?,
         language: String?,
         features: List<Feature>?,
         buffer: Buffer?,
-    ): List<ShapedGlyph> {
+    ): List<GlyphInfo> {
         if (text.isEmpty()) return emptyList()
         val codepoints = text.codePoints().toArray()
         val clusters = IntArray(codepoints.size) { it }
@@ -191,12 +191,12 @@ class VirtualHarfBuzzFont(
 
     override fun shape(
         text: String,
-        direction: TextDirection?,
+        direction: Direction?,
         script: String?,
         language: String?,
         features: FeatureSet,
         buffer: Buffer?,
-    ): List<ShapedGlyph> {
+    ): List<GlyphInfo> {
         if (text.isEmpty()) return emptyList()
         val codepoints = text.codePoints().toArray()
         val clusters = IntArray(codepoints.size) { it }
@@ -222,12 +222,12 @@ class VirtualHarfBuzzFont(
     fun shapeCodepoints(
         codepoints: IntArray,
         clusters: IntArray,
-        direction: TextDirection? = null,
+        direction: Direction? = null,
         script: String? = null,
         language: String? = null,
         features: List<Feature>? = null,
         buffer: Buffer? = null,
-    ): List<ShapedGlyph> = doShapeCodepoints(codepoints, clusters, direction, script, language, features, buffer)
+    ): List<GlyphInfo> = doShapeCodepoints(codepoints, clusters, direction, script, language, features, buffer)
 
     /**
      * Shape codepoints with a pre-allocated [FeatureSet].
@@ -235,22 +235,22 @@ class VirtualHarfBuzzFont(
     fun shapeCodepoints(
         codepoints: IntArray,
         clusters: IntArray,
-        direction: TextDirection? = null,
+        direction: Direction? = null,
         script: String? = null,
         language: String? = null,
         features: FeatureSet,
         buffer: Buffer? = null,
-    ): List<ShapedGlyph> = doShapeCodepoints(codepoints, clusters, direction, script, language, features, buffer)
+    ): List<GlyphInfo> = doShapeCodepoints(codepoints, clusters, direction, script, language, features, buffer)
 
     private fun doShapeCodepoints(
         codepoints: IntArray,
         clusters: IntArray,
-        direction: TextDirection?,
+        direction: Direction?,
         script: String?,
         language: String?,
         features: Any?,
         buffer: Buffer?,
-    ): List<ShapedGlyph> {
+    ): List<GlyphInfo> {
         if (codepoints.isEmpty()) return emptyList()
         require(codepoints.size == clusters.size) { "codepoints and clusters must be same length" }
 
