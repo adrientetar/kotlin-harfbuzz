@@ -136,27 +136,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts/
-
-      - name: Rename artifacts with platform classifier
-        run: |
-          for dir in artifacts/native-*; do
-            classifier=$(basename "$dir" | sed 's/native-//')
-            for file in "$dir"/*; do
-              filename=$(basename "$file")
-              ext="${filename##*.}"
-              base="${filename%.*}"
-              mv "$file" "$dir/${base}-${classifier}.${ext}"
-            done
-          done
-          ls -la artifacts/native-*/
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           generate_release_notes: true
-          files: |
-            artifacts/**/*
