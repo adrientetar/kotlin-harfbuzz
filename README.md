@@ -24,7 +24,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.github.adrientetar:kotlin-harfbuzz:1.0.0")
+    implementation("io.github.adrientetar:kotlin-harfbuzz:1.1.0")
 }
 ```
 
