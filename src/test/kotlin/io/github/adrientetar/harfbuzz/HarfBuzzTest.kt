@@ -439,6 +439,93 @@ class HarfBuzzTest {
         }
     }
 
+    // ========== Exception hierarchy ==========
+
+    @Test
+    fun `HarfBuzzClosedException is a HarfBuzzException`() {
+        val font = HarfBuzzFont(getTestFontBytes())
+        font.close()
+        val ex = assertThrows<HarfBuzzException> { font.shape("Hello") }
+        assertTrue(ex is HarfBuzzClosedException)
+    }
+
+    @Test
+    fun `closed exception message contains class name`() {
+        val font = HarfBuzzFont(getTestFontBytes())
+        font.close()
+        val ex = assertThrows<HarfBuzzClosedException> { font.shape("Hello") }
+        assertTrue(ex.message!!.contains("HarfBuzzFont"), "Message should mention HarfBuzzFont")
+    }
+
+    @Test
+    fun `virtual font closed exception message contains class name`() {
+        val font = makeVirtualFont()
+        font.close()
+        val ex = assertThrows<HarfBuzzClosedException> { font.shape("A") }
+        assertTrue(ex.message!!.contains("VirtualHarfBuzzFont"), "Message should mention VirtualHarfBuzzFont")
+    }
+
+    @Test
+    fun `shapeCodepoints after close throws`() {
+        val font = makeVirtualFont()
+        font.close()
+        assertThrows<HarfBuzzClosedException> {
+            font.shapeCodepoints(intArrayOf('A'.code), intArrayOf(0))
+        }
+    }
+
+    @Test
+    fun `shape with feature list after close throws`() {
+        val font = HarfBuzzFont(getTestFontBytes())
+        font.close()
+        assertThrows<HarfBuzzClosedException> {
+            font.shape("Hello", features = listOf(Feature("kern", true)))
+        }
+    }
+
+    @Test
+    fun `shape with feature set after close throws`() {
+        val fs = FeatureSet("kern" to true)
+        val font = HarfBuzzFont(getTestFontBytes())
+        font.close()
+        assertThrows<HarfBuzzClosedException> {
+            font.shape("Hello", features = fs)
+        }
+    }
+
+    @Test
+    fun `virtual font shape with feature set after close throws`() {
+        val fs = FeatureSet("kern" to true)
+        val font = makeVirtualFont()
+        font.close()
+        assertThrows<HarfBuzzClosedException> {
+            font.shape("A", features = fs)
+        }
+    }
+
+    @Test
+    fun `exception hierarchy is correct`() {
+        val closed = HarfBuzzClosedException("test")
+        val native_ = HarfBuzzNativeException("test")
+        val load = HarfBuzzLoadException("test")
+
+        assertTrue(closed is HarfBuzzException, "HarfBuzzClosedException should extend HarfBuzzException")
+        assertTrue(native_ is HarfBuzzException, "HarfBuzzNativeException should extend HarfBuzzException")
+        assertTrue(load is HarfBuzzException, "HarfBuzzLoadException should extend HarfBuzzException")
+
+        assertTrue(closed is RuntimeException, "All should be RuntimeException")
+        assertTrue(native_ is RuntimeException)
+        assertTrue(load is RuntimeException)
+    }
+
+    @Test
+    fun `HarfBuzzLoadException preserves cause`() {
+        val cause = java.io.IOException("disk full")
+        val ex = HarfBuzzLoadException("Failed to extract", cause)
+        assertEquals("Failed to extract", ex.message)
+        assertEquals(cause, ex.cause)
+    }
+
     // ========== Helpers ==========
 
     private fun makeVirtualFont(): VirtualHarfBuzzFont {
