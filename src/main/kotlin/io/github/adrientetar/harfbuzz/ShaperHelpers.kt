@@ -29,7 +29,7 @@ internal object ShaperHelpers {
             HbMemoryMode.READONLY,
             null,
             null,
-        ) ?: error("Failed to create blob for table ${tagToString(tag)}")
+        ) ?: throw HarfBuzzNativeException("Failed to create blob for table ${tagToString(tag)}")
         overrideBlobs[tag] = blob
     }
 

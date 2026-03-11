@@ -63,7 +63,7 @@ internal object NativeLoader {
                         tmpFile.delete() // clean up if rename succeeded or failed
                     }
                 } catch (e: IOException) {
-                    error("Failed to extract native library to $libFile: ${e.message}")
+                    throw HarfBuzzLoadException("Failed to extract native library to $libFile: ${e.message}", e)
                 }
             }
             
@@ -82,13 +82,13 @@ internal object NativeLoader {
             os.contains("mac") || os.contains("darwin") -> "macos"
             os.contains("linux") -> "linux"
             os.contains("windows") -> "windows"
-            else -> error("Unsupported OS: $os")
+            else -> throw HarfBuzzLoadException("Unsupported OS: $os")
         }
         
         val archName = when {
             arch == "aarch64" || arch == "arm64" -> "arm64"
             arch == "amd64" || arch == "x86_64" -> "x64"
-            else -> error("Unsupported architecture: $arch")
+            else -> throw HarfBuzzLoadException("Unsupported architecture: $arch")
         }
         
         return "$osName-$archName"
@@ -100,7 +100,7 @@ internal object NativeLoader {
             os.contains("mac") || os.contains("darwin") -> "libharfbuzz.dylib"
             os.contains("linux") -> "libharfbuzz.so"
             os.contains("windows") -> "harfbuzz.dll"
-            else -> error("Unsupported OS: $os")
+            else -> throw HarfBuzzLoadException("Unsupported OS: $os")
         }
     }
 }

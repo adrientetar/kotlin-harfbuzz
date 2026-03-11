@@ -25,7 +25,7 @@ class Buffer private constructor(
         /** Create a new reusable buffer. */
         fun create(): Buffer {
             val ptr = HarfBuzz.hb_buffer_create()
-                ?: error("Failed to create HarfBuzz buffer")
+                ?: throw HarfBuzzNativeException("Failed to create HarfBuzz buffer")
             return Buffer(ptr)
         }
     }

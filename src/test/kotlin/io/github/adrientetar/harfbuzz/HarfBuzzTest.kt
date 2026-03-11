@@ -108,7 +108,7 @@ class HarfBuzzTest {
     fun `shape after close throws`() {
         val font = HarfBuzzFont(getTestFontBytes())
         font.close()
-        assertThrows<IllegalStateException> { font.shape("Hello") }
+        assertThrows<HarfBuzzClosedException> { font.shape("Hello") }
     }
 
     @Test
@@ -369,7 +369,7 @@ class HarfBuzzTest {
     fun `virtual font shape after close throws`() {
         val font = makeVirtualFont()
         font.close()
-        assertThrows<IllegalStateException> { font.shape("A") }
+        assertThrows<HarfBuzzClosedException> { font.shape("A") }
     }
 
     @Test

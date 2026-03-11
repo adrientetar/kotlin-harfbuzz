@@ -80,14 +80,14 @@ class VirtualHarfBuzzFont(
         }
 
         face = HarfBuzz.hb_face_create_for_tables(tableCallback, null, null)
-            ?: error("Failed to create HarfBuzz face for tables")
+            ?: throw HarfBuzzNativeException("Failed to create HarfBuzz face for tables")
 
         // Configure face metrics / glyph count (required since we don't have a real font blob)
         HarfBuzz.hb_face_set_upem(face, upem)
         HarfBuzz.hb_face_set_glyph_count(face, glyphOrderValue.size)
 
         font = HarfBuzz.hb_font_create(face)
-            ?: error("Failed to create HarfBuzz font")
+            ?: throw HarfBuzzNativeException("Failed to create HarfBuzz font")
 
         HarfBuzz.hb_font_set_scale(font, upem, upem)
 
@@ -96,7 +96,7 @@ class VirtualHarfBuzzFont(
 
     private fun installFontFuncs() {
         val funcs = HarfBuzz.hb_font_funcs_create()
-            ?: error("Failed to create hb_font_funcs")
+            ?: throw HarfBuzzNativeException("Failed to create hb_font_funcs")
 
         nominalGlyphFunc = object : HbNominalGlyphFunc {
             override fun invoke(
@@ -257,7 +257,7 @@ class VirtualHarfBuzzFont(
         // Use lock to prevent close() from destroying resources while shaping is in progress
         return shapingLock.withLock {
             if (closed.get()) {
-                throw IllegalStateException("VirtualHarfBuzzFont has been closed")
+                throw HarfBuzzClosedException("VirtualHarfBuzzFont has been closed")
             }
 
             val buf: Pointer
@@ -268,7 +268,7 @@ class VirtualHarfBuzzFont(
                 ownsBuffer = false
             } else {
                 buf = HarfBuzz.hb_buffer_create()
-                    ?: error("Failed to create HarfBuzz buffer")
+                    ?: throw HarfBuzzNativeException("Failed to create HarfBuzz buffer")
                 ownsBuffer = true
             }
 

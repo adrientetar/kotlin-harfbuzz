@@ -104,10 +104,10 @@ class HarfBuzzFont(
             HbMemoryMode.READONLY,
             null,
             null,
-        ) ?: error("Failed to create HarfBuzz blob")
+        ) ?: throw HarfBuzzNativeException("Failed to create HarfBuzz blob")
 
         baseFace = HarfBuzz.hb_face_create(blob, 0)
-            ?: error("Failed to create HarfBuzz face")
+            ?: throw HarfBuzzNativeException("Failed to create HarfBuzz face")
 
         // Prepare override blobs
         ShaperHelpers.prepareOverrides(tableOverrides, overrideMemory, overrideBlobs)
@@ -120,7 +120,7 @@ class HarfBuzzFont(
         }
 
         font = HarfBuzz.hb_font_create(face)
-            ?: error("Failed to create HarfBuzz font")
+            ?: throw HarfBuzzNativeException("Failed to create HarfBuzz font")
 
         upem = HarfBuzz.hb_face_get_upem(face)
         HarfBuzz.hb_font_set_scale(font, upem, upem)
@@ -144,7 +144,7 @@ class HarfBuzzFont(
         }
 
         return HarfBuzz.hb_face_create_for_tables(tableCallback, null, null)
-            ?: error("Failed to create HarfBuzz face with table overrides")
+            ?: throw HarfBuzzNativeException("Failed to create HarfBuzz face with table overrides")
     }
 
     /**
@@ -180,7 +180,7 @@ class HarfBuzzFont(
 
         return shapingLock.withLock {
             if (closed.get()) {
-                throw IllegalStateException("HarfBuzzFont has been closed")
+                throw HarfBuzzClosedException("HarfBuzzFont has been closed")
             }
 
             val buf: Pointer
@@ -191,7 +191,7 @@ class HarfBuzzFont(
                 ownsBuffer = false
             } else {
                 buf = HarfBuzz.hb_buffer_create()
-                    ?: error("Failed to create HarfBuzz buffer")
+                    ?: throw HarfBuzzNativeException("Failed to create HarfBuzz buffer")
                 ownsBuffer = true
             }
 
