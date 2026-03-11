@@ -82,6 +82,29 @@ API reference
 | `TableOverrides` | Optional GSUB/GPOS/GDEF table data to override during shaping. |
 | `Direction` | `LTR` or `RTL` text direction for shaping. |
 
+### Error Handling
+
+All library-specific errors extend `HarfBuzzException`, so you can use a single catch for any
+HarfBuzz failure. Input validation uses `IllegalArgumentException` (standard Kotlin).
+
+```kotlin
+try {
+    font.shape("Hello")
+} catch (e: HarfBuzzClosedException) {
+    // font was already closed
+} catch (e: HarfBuzzException) {
+    // catch-all for any other HarfBuzz error
+}
+```
+
+| Exception | When |
+|-----------|------|
+| `HarfBuzzException` | Base class — catch this to handle any library error. |
+| `HarfBuzzNativeException` | A native HarfBuzz call failed (e.g., resource allocation returned null). |
+| `HarfBuzzClosedException` | An operation was attempted on a closed `Font` or `Buffer`. |
+| `HarfBuzzLoadException` | The native library could not be loaded (unsupported OS/architecture, extraction failure). |
+| `IllegalArgumentException` | Invalid input (bad feature tag, invalid feature string, mismatched array sizes). |
+
 Build
 -----
 
